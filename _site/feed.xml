@@ -5,12 +5,12 @@
     <description>欢迎来到我的个人站~</description>
     <link>http://localhost:4000/</link>
     <atom:link href="http://localhost:4000/feed.xml" rel="self" type="application/rss+xml"/>
-    <pubDate>Sun, 13 Nov 2016 21:21:28 +0800</pubDate>
-    <lastBuildDate>Sun, 13 Nov 2016 21:21:28 +0800</lastBuildDate>
+    <pubDate>Sun, 13 Nov 2016 21:37:16 +0800</pubDate>
+    <lastBuildDate>Sun, 13 Nov 2016 21:37:16 +0800</lastBuildDate>
     <generator>Jekyll v3.3.0</generator>
     
       <item>
-        <title>DJTableViewVM introduce!</title>
+        <title>DJTableViewVM</title>
         <description>&lt;h1 id=&quot;cmd-markdown-&quot;&gt;欢迎使用 Cmd Markdown 编辑阅读器&lt;/h1&gt;
 
 &lt;hr /&gt;
@@ -236,8 +236,8 @@ Bob--&amp;gt;Alice: I am good thanks!
         <link>http://localhost:4000/2016/11/DJTableViewVM/</link>
         <guid isPermaLink="true">http://localhost:4000/2016/11/DJTableViewVM/</guid>
         
-        
         <category>iOS</category>
+        
         
       </item>
     

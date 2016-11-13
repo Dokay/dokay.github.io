@@ -1,8 +1,8 @@
 ---
 layout: post
-title:  "DJTableViewVM introduce!"
+title:  "DJTableViewVM"
 date:   2016-11-12 14:03:03 +0800
-categories: iOS
+tag: iOS
 ---
 # 欢迎使用 Cmd Markdown 编辑阅读器
 
