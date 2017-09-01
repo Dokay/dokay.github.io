@@ -1,5 +1,6 @@
 ---
 layout: post
+comments: true
 title:  "Release 模式下的Zombie检查工具"
 date:   2017-8-30 21:03:03 +0800
 categories: iOS
