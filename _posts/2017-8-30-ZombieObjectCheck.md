@@ -15,7 +15,7 @@ categories: iOS
 但是该功能有个缺陷，即只能在Debug模式下使用，大部分Zombie是偶然发生的，并没有必现的路径。如果QA手中的版本（Release模式打包）中有类似的Zombie检查功能将会大大提高我们找到Zombie对象的效率。
 
 ### 尝试使用系统自带的
-在源码(这里使用objc4-706)中搜索zombie，很容易搜索到下面代码：
+在源码(这里使用[objc4-706](https://opensource.apple.com/tarballs/objc4/objc4-706.tar.gz))中搜索zombie，很容易搜索到下面代码：
 ```
 void environ_init(void) 
 {
@@ -86,7 +86,7 @@ env:YES
 ```
 尽管环境变量已经设置YES，并不起作用，猜测环境变量起作用的时机在+load()方法调用之前。
 回过头看看源码，发现设置环境变量后控制的是DebugPoolAllocation变量，尝试将其置为true也不行。
-既然这里通过环境变量开控制开关，Apple总归要有实现的地方，查看CF的源码(这里使用的是CF-855.17)
+既然这里通过环境变量开控制开关，Apple总归要有实现的地方，查看CF的源码(这里使用的是[CF-855.17](https://opensource.apple.com/tarballs/CF/CF-855.17.tar.gz))
 在CFRuntime.c文件中看到两个函数__CFZombifyNSObject,_CFEnableZombies：
 ```
 #if defined(DEBUG) || defined(ENABLE_ZOMBIES)
@@ -197,24 +197,24 @@ Zombie 检查的实现一览无余了。
 上面汇编大致的翻译成伪码后：
 ```
 if(__CFZombieEnabled){
-	class selfClass = object_getClass(self);
-	char *className = class_getName(selfClass);//获取类名
-	char *classNameWithZombie;
-	asprintf(&classNameWithZombie,"_NSZombie_%s",className);//加_NSZombie_前缀
-	class zombieClass = objc_lookUpClass(classNameWithZombie);//返回一个classNameWithZombie类名的class
-	if(zombieClass == nil){
-		//返回一个“_NSZombie_”类名的class,这个类比较特殊，里面没有任何的方法，
-		//所以给这个类发任何消息都会触发消息转发，最后因找不到方法而崩溃。
-		class defaultZombieClass = objc_lookUpClass("_NSZombie_");
-		//根据defaultZombieClass复制一个类名为classNameWithZombie的class
-		zombieClass = objc_duplicateClass(defaultZombieClass,classNameWithZombie,0);
-	}
-	free(classNameWithZombie);//释放字符串内存
-	objc_destructInstance(self);//销毁self，后面会看到该方法的实现。
-	object_setClass(self,zombieClass);//设置当前类的内容是zombieClass，即一个没有任何方法的类
-	if(__CFDeallocateZombies){
-		free(self);
-	}
+    class selfClass = object_getClass(self);
+    char *className = class_getName(selfClass);//获取类名
+    char *classNameWithZombie;
+    asprintf(&classNameWithZombie,"_NSZombie_%s",className);//加_NSZombie_前缀
+    class zombieClass = objc_lookUpClass(classNameWithZombie);//返回一个classNameWithZombie类名的class
+    if(zombieClass == nil){
+        //返回一个“_NSZombie_”类名的class,这个类比较特殊，里面没有任何的方法，
+        //所以给这个类发任何消息都会触发消息转发，最后因找不到方法而崩溃。
+        class defaultZombieClass = objc_lookUpClass("_NSZombie_");
+        //根据defaultZombieClass复制一个类名为classNameWithZombie的class
+        zombieClass = objc_duplicateClass(defaultZombieClass,classNameWithZombie,0);
+    }
+    free(classNameWithZombie);//释放字符串内存
+    objc_destructInstance(self);//销毁self，后面会看到该方法的实现。
+    object_setClass(self,zombieClass);//设置当前类的内容是zombieClass，即一个没有任何方法的类
+    if(__CFDeallocateZombies){
+        free(self);//设置NSDeallocateZombies环境变量时真正释放Zombie对象的内存
+    }
 }
 ```
 objc_destructInstance源码如下：
