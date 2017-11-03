@@ -1,0 +1,391 @@
+<?xml version="1.0" encoding="utf-8"?><?xml-stylesheet type="text/xml" href="http://localhost:4000/feed.xslt.xml"?><feed xmlns="http://www.w3.org/2005/Atom"><generator uri="http://jekyllrb.com" version="3.3.0">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2017-11-03T18:22:51+08:00</updated><id>http://localhost:4000//</id><title type="html">豆中旭</title><subtitle>学习与总结~</subtitle><entry><title type="html">UITableView 各个reload性能分析</title><link href="http://localhost:4000/2017/11/ReloadData/" rel="alternate" type="text/html" title="UITableView 各个reload性能分析" /><published>2017-11-02T22:03:03+08:00</published><updated>2017-11-02T22:03:03+08:00</updated><id>http://localhost:4000/2017/11/ReloadData</id><content type="html" xml:base="http://localhost:4000/2017/11/ReloadData/">&lt;p&gt;苹果原生的UITableView 当数据源改变时有三个reload方法，分别是reloadData、reloadSections:withRowAnimation:、reloadRowsAtIndexPaths:withRowAnimation，本文主要是分析三个方法在Reload非动画时(animation参数使用UITableViewRowAnimationNone)的性能比较，主要是比较主线程的时间。凭感觉这三个方法的性能最好是ReloadRow，最差是ReloadData,下面实际比较一下是不是这样。Demo传送门：&lt;a href=&quot;https://github.com/Dokay/DJTestDemo/tree/master/DJTestTableViewReloadData&quot;&gt;DJTestTableViewReloadData&lt;/a&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;section&quot;&gt;比较的方法&lt;/h3&gt;
+&lt;p&gt;reloadSections:withRowAnimation:和reloadRowsAtIndexPaths:withRowAnimation是两个同步方法，reloadData是一个异步刷新方法。直接在方法调用前后埋点采集时间是不准确的，所以需要结束时间的采集在TableView的View刷新之后，而View的刷新在Runloop的beforeWarting回调里面，所以调用reloadData方法后的下个Runloop开始时TableView已经刷新完毕。dispatch_after是避免其他事件对检测的干扰。&lt;/p&gt;
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;- (void)onTouchTest{
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        __block NSTimeInterval begin, end;
+        begin = CACurrentMediaTime();
+        printf(&quot;start....\n&quot;);
+        dispatch_async(dispatch_get_main_queue(), ^{
+            printf(&quot;reload....\n&quot;);
+//            [self.tableView reloadData];
+            NSIndexPath *indexPath = [NSIndexPath indexPathForRow:3 inSection:0];
+            [self.tableView reloadSections:[NSIndexSet indexSetWithIndex:0] withRowAnimation:UITableViewRowAnimationNone];
+//            [self.tableView reloadRowsAtIndexPaths:@[indexPath] withRowAnimation:UITableViewRowAnimationNone];
+            dispatch_async(dispatch_get_main_queue(),^{
+                printf(&quot;end....\n&quot;);
+                end = CACurrentMediaTime();
+                printf(&quot; %8.2f ms\n&quot;,((end - begin) * 1000));
+            });
+        });
+    });
+    
+}
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;h3 id=&quot;section-1&quot;&gt;结果数据比较&lt;/h3&gt;
+&lt;p&gt;使用测试机型分别是iPhone4S,系统版本iOS8.1.1，iPhone7，系统版本iOS11.1。由于第一次调用函数和从第二次开始后数据差异比较大，分开比较。先比较第二次开始后的稳定数据。&lt;/p&gt;
+
+&lt;p&gt;以下图表是稳定状态下的iPhone4S数据：
+&lt;img src=&quot;/images/posts/reloaddata/Reload_4S_2.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;iPhone7数据：
+&lt;img src=&quot;/images/posts/reloaddata/Reload_7_2.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;结论：
+在iPhone 4S机器上当Cell数量小于1000时，ReloadData的性能是优于ReloadRow,当Cell数量大于1000时ReloadData的性能开始优于ReloadRow。ReloadSection的性能始终最差。
+在iPhone 7机器上ReloadData的性能始终是优于ReloadRow,ReloadSection的性能始终最差。&lt;/p&gt;
+
+&lt;p&gt;下面比较第一次函数调用的数据：
+第一次函数调用ReloadRow和ReloadSection都有一个特点就是相较于ReloadData，ReloadRow会多调用一次Cell的初始化方法，ReloadSection会多调用一屏数量的Cell的初始化方法。至于为什么会多调用一次初始化方法根据苹果的文档猜测，新初始化的Cell用来做动画了,下面是苹果关于reloadSections:withRowAnimation:的说明：
+&lt;img src=&quot;/images/posts/reloaddata/ReloadRow_apple.jpg&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;此处包含Nib文件的Cell比较简单，只包含一个UIImageView和一个UILabel。具体可见文末的测试Demo。
+以下图表是第一次与第二次开始后稳定的iPhone4S数据：
+&lt;img src=&quot;/images/posts/reloaddata/Reload_4S_1.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;iPhone7数据：
+&lt;img src=&quot;/images/posts/reloaddata/Reload_7_1.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;结论：
+由于要多初始化一个含Nib的Cell，ReloadRow的性能劣于ReloadData在iPone4S和iPhone7上表现是一致的。&lt;/p&gt;
+
+&lt;h3 id=&quot;section-2&quot;&gt;总结&lt;/h3&gt;
+&lt;p&gt;1.只有当Cell的数量比较少（少于1000）时，并且Cell的初始化比较简单时，在iPhone4S iOS8.1.1上ReloadRow性能最优;其他Cell稍复杂或者Cell的数量比较多时ReloadData性能最优。ReloadSection始终是效率最差的。
+2.猜测慢的原因是即使UI
+3.由于我们平时使用的Cell的复杂度一般高于一个简单的Nib文件Cell初始化的时间，建议在平时的使用中优先使用ReloadData,其次ReloadRow,最后使用ReloadSection。&lt;/p&gt;
+
+&lt;p&gt;原创文章，转载请注明出处。&lt;/p&gt;</content><summary type="html">苹果原生的UITableView 当数据源改变时有三个reload方法，分别是reloadData、reloadSections:withRowAnimation:、reloadRowsAtIndexPaths:withRowAnimation，本文主要是分析三个方法在Reload非动画时(animation参数使用UITableViewRowAnimationNone)的性能比较，主要是比较主线程的时间。凭感觉这三个方法的性能最好是ReloadRow，最差是ReloadData,下面实际比较一下是不是这样。Demo传送门：DJTestTableViewReloadData</summary></entry><entry><title type="html">Release 模式下的Zombie检查工具</title><link href="http://localhost:4000/2017/08/ZombieObjectCheck/" rel="alternate" type="text/html" title="Release 模式下的Zombie检查工具" /><published>2017-08-30T21:03:03+08:00</published><updated>2017-08-30T21:03:03+08:00</updated><id>http://localhost:4000/2017/08/ZombieObjectCheck</id><content type="html" xml:base="http://localhost:4000/2017/08/ZombieObjectCheck/">&lt;p&gt;不想看原理的可以直接去使用，传送门：&lt;a href=&quot;https://github.com/Dokay/DJZombieCheck&quot;&gt;DJZombieCheck&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;一般我们对Zombie对象检查使用Xcode自带的功能：&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/images/posts/zombie_object_check/xcode_zombie_object.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;但是该功能有个缺陷，即只能在Debug模式下使用，大部分Zombie是偶然发生的，并没有必现的路径。如果QA手中的版本（Release模式打包）中有类似的Zombie检查功能将会大大提高我们找到Zombie对象的效率。&lt;/p&gt;
+
+&lt;h3 id=&quot;section&quot;&gt;尝试使用系统自带的&lt;/h3&gt;
+&lt;p&gt;在源码(这里使用&lt;a href=&quot;https://opensource.apple.com/tarballs/objc4/objc4-706.tar.gz&quot;&gt;objc4-706&lt;/a&gt;)中搜索zombie，很容易搜索到下面代码：&lt;/p&gt;
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;void environ_init(void) 
+{
+ 	...
+	
+    for (char **p = *_NSGetEnviron(); *p != nil; p++) {
+        if (0 == strncmp(*p, &quot;Malloc&quot;, 6)  ||  0 == strncmp(*p, &quot;DYLD&quot;, 4)  ||  
+            0 == strncmp(*p, &quot;NSZombiesEnabled&quot;, 16))
+        {
+            maybeMallocDebugging = true;
+        }
+	}
+	
+	...
+	
+	if (maybeMallocDebugging) {
+	        const char *insert = getenv(&quot;DYLD_INSERT_LIBRARIES&quot;);
+	        const char *zombie = getenv(&quot;NSZombiesEnabled&quot;);
+	        const char *pooldebug = getenv(&quot;OBJC_DEBUG_POOL_ALLOCATION&quot;);
+	        if ((getenv(&quot;MallocStackLogging&quot;)
+	             || getenv(&quot;MallocStackLoggingNoCompact&quot;)
+	             || (zombie &amp;amp;&amp;amp; (*zombie == 'Y' || *zombie == 'y'))
+	             || (insert &amp;amp;&amp;amp; strstr(insert, &quot;libgmalloc&quot;)))
+	            &amp;amp;&amp;amp;
+	            (!pooldebug || 0 == strcmp(pooldebug, &quot;YES&quot;)))
+	        {
+	            DebugPoolAllocation = true;
+	        }
+	    }
+}
+
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+&lt;p&gt;从源码中很明显的看出在Xcode中设置ZombieObject其实就是设置了环境变量NSZombiesEnabled的值为Y或y,并且OBJC_DEBUG_POOL_ALLOCATION环境变量为YES。自己可以打开Zombie通过代码验证一下：&lt;/p&gt;
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;    const char *zombie = getenv(&quot;NSZombiesEnabled&quot;);
+    char *pool = getenv(&quot;OBJC_DEBUG_POOL_ALLOCATION&quot;);
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+&lt;p&gt;两个变量的输出都是NULL，难道猜错了。再验证一下：&lt;/p&gt;
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;    for (char **p = *_NSGetEnviron(); *p != nil; p++) {
+        printf(&quot;\n env:%s&quot;,*p);
+    }
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+&lt;p&gt;输出：&lt;/p&gt;
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt; ...
+ env:NSZombieEnabled=YES
+ env:CLASSIC=0
+ env:SIMULATOR_RUNTIME_BUILD_VERSION=14E8301
+ ...
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+&lt;p&gt;明显是设置了NSZombieEnabled环境变量为YES，与源码有出入，但是思路是对的。
+设置Zombie Object前后环境变量的改变只有一处，见下图红色部分：
+&lt;img src=&quot;/images/posts/zombie_object_check/env_compare.png&quot; alt=&quot;&quot; /&gt;
+能否直接代码设置环境变量NSZombieEnabled为YES达到目的呢：&lt;/p&gt;
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;+ (void)load
+{
+    setenv(&quot;NSZombieEnabled&quot;, &quot;YES&quot;, 1);
+    
+    const char *zombie = getenv(&quot;NSZombieEnabled&quot;);
+    printf(&quot;\n env:%s&quot;,zombie);
+}
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+&lt;p&gt;输出：&lt;/p&gt;
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;env:YES
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+&lt;p&gt;尽管环境变量已经设置YES，并不起作用，猜测环境变量起作用的时机在+load()方法调用之前。
+回过头看看源码，发现设置环境变量后控制的是DebugPoolAllocation变量，尝试将其置为true也不行。
+既然这里通过环境变量开控制开关，Apple总归要有实现的地方，查看CF的源码(这里使用的是&lt;a href=&quot;https://opensource.apple.com/tarballs/CF/CF-855.17.tar.gz&quot;&gt;CF-855.17&lt;/a&gt;)
+在CFRuntime.c文件中看到两个函数__CFZombifyNSObject,_CFEnableZombies：&lt;/p&gt;
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;#if defined(DEBUG) || defined(ENABLE_ZOMBIES)
+
+CF_PRIVATE uint8_t __CFZombieEnabled = 0;
+CF_PRIVATE uint8_t __CFDeallocateZombies = 0;
+
+extern void __CFZombifyNSObject(void);  // from NSObject.m
+
+void _CFEnableZombies(void) {
+}
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+&lt;p&gt;Xcode打卡Zombie Object分别添加符号断点，__CFZombifyNSObject汇编大致如下：&lt;/p&gt;
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;CoreFoundation`__CFZombifyNSObject:
+-&amp;gt;  0x10b417e10 &amp;lt;+0&amp;gt;:  pushq  %rbp
+    0x10b417e11 &amp;lt;+1&amp;gt;:  movq   %rsp, %rbp
+    0x10b417e14 &amp;lt;+4&amp;gt;:  pushq  %r15
+    0x10b417e16 &amp;lt;+6&amp;gt;:  pushq  %r14
+    0x10b417e18 &amp;lt;+8&amp;gt;:  pushq  %rbx
+    0x10b417e19 &amp;lt;+9&amp;gt;:  pushq  %rax
+    0x10b417e1a &amp;lt;+10&amp;gt;: leaq   0x1f3470(%rip), %rdi      ; &quot;NSObject&quot;
+    0x10b417e21 &amp;lt;+17&amp;gt;: callq  0x10b4628ca               ; symbol stub for: objc_lookUpClass
+    0x10b417e26 &amp;lt;+22&amp;gt;: movq   %rax, %rbx
+    0x10b417e29 &amp;lt;+25&amp;gt;: movq   0x246f88(%rip), %rsi      ; &quot;dealloc&quot;
+    0x10b417e30 &amp;lt;+32&amp;gt;: movq   0x2481c9(%rip), %r14      ; &quot;__dealloc_zombie&quot;
+    0x10b417e37 &amp;lt;+39&amp;gt;: movq   %rbx, %rdi
+    0x10b417e3a &amp;lt;+42&amp;gt;: callq  0x10b4624d4               ; symbol stub for: class_getInstanceMethod
+    0x10b417e3f &amp;lt;+47&amp;gt;: movq   %rax, %r15
+    0x10b417e42 &amp;lt;+50&amp;gt;: movq   %rbx, %rdi
+    0x10b417e45 &amp;lt;+53&amp;gt;: movq   %r14, %rsi
+    0x10b417e48 &amp;lt;+56&amp;gt;: callq  0x10b4624d4               ; symbol stub for: class_getInstanceMethod
+    0x10b417e4d &amp;lt;+61&amp;gt;: movq   %r15, %rdi
+    0x10b417e50 &amp;lt;+64&amp;gt;: movq   %rax, %rsi
+    0x10b417e53 &amp;lt;+67&amp;gt;: addq   $0x8, %rsp
+    0x10b417e57 &amp;lt;+71&amp;gt;: popq   %rbx
+    0x10b417e58 &amp;lt;+72&amp;gt;: popq   %r14
+    0x10b417e5a &amp;lt;+74&amp;gt;: popq   %r15
+    0x10b417e5c &amp;lt;+76&amp;gt;: popq   %rbp
+    0x10b417e5d &amp;lt;+77&amp;gt;: jmp    0x10b462810               ; symbol stub for: method_exchangeImplementations
+    0x10b417e62 &amp;lt;+82&amp;gt;: nopw   %cs:(%rax,%rax)
+
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+&lt;p&gt;看到这个，经常做Swizzle的同学已经看出来了，Apple直接Swizzle了NSObject的dealloc方法，最后实际的实现函数是 __dealloc_zombie，
+对__dealloc_zombie添加符号断点：&lt;/p&gt;
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;CoreFoundation`-[NSObject(NSObject) __dealloc_zombie]:
+-&amp;gt;  0x10b418250 &amp;lt;+0&amp;gt;:   pushq  %rbp
+    0x10b418251 &amp;lt;+1&amp;gt;:   movq   %rsp, %rbp
+    0x10b418254 &amp;lt;+4&amp;gt;:   pushq  %r14
+    0x10b418256 &amp;lt;+6&amp;gt;:   pushq  %rbx
+    0x10b418257 &amp;lt;+7&amp;gt;:   subq   $0x10, %rsp
+    0x10b41825b &amp;lt;+11&amp;gt;:  movq   %rdi, %rbx
+    0x10b41825e &amp;lt;+14&amp;gt;:  testq  %rbx, %rbx
+    0x10b418261 &amp;lt;+17&amp;gt;:  js     0x10b418305               ; &amp;lt;+181&amp;gt;
+    0x10b418267 &amp;lt;+23&amp;gt;:  leaq   0x25a1aa(%rip), %rax      ; __CFZombieEnabled
+    0x10b41826e &amp;lt;+30&amp;gt;:  cmpb   $0x0, (%rax)
+    0x10b418271 &amp;lt;+33&amp;gt;:  je     0x10b41830e               ; &amp;lt;+190&amp;gt;
+    0x10b418277 &amp;lt;+39&amp;gt;:  movq   %rbx, %rdi
+    0x10b41827a &amp;lt;+42&amp;gt;:  callq  0x10b462936               ; symbol stub for: object_getClass
+    0x10b41827f &amp;lt;+47&amp;gt;:  movq   $0x0, -0x18(%rbp)
+    0x10b418287 &amp;lt;+55&amp;gt;:  movq   %rax, %rdi
+    0x10b41828a &amp;lt;+58&amp;gt;:  callq  0x10b4624e0               ; symbol stub for: class_getName
+    0x10b41828f &amp;lt;+63&amp;gt;:  movq   %rax, %rcx
+    0x10b418292 &amp;lt;+66&amp;gt;:  leaq   0x1e9285(%rip), %rsi      ; &quot;_NSZombie_%s&quot;
+    0x10b418299 &amp;lt;+73&amp;gt;:  leaq   -0x18(%rbp), %rdi
+    0x10b41829d &amp;lt;+77&amp;gt;:  xorl   %eax, %eax
+    0x10b41829f &amp;lt;+79&amp;gt;:  movq   %rcx, %rdx
+    0x10b4182a2 &amp;lt;+82&amp;gt;:  callq  0x10b462402               ; symbol stub for: asprintf
+    0x10b4182a7 &amp;lt;+87&amp;gt;:  movq   -0x18(%rbp), %rdi
+    0x10b4182ab &amp;lt;+91&amp;gt;:  callq  0x10b4628ca               ; symbol stub for: objc_lookUpClass
+    0x10b4182b0 &amp;lt;+96&amp;gt;:  movq   %rax, %r14
+    0x10b4182b3 &amp;lt;+99&amp;gt;:  testq  %r14, %r14
+    0x10b4182b6 &amp;lt;+102&amp;gt;: jne    0x10b4182d5               ; &amp;lt;+133&amp;gt;
+    0x10b4182b8 &amp;lt;+104&amp;gt;: leaq   0x1e8c7d(%rip), %rdi      ; &quot;_NSZombie_&quot;
+    0x10b4182bf &amp;lt;+111&amp;gt;: callq  0x10b4628ca               ; symbol stub for: objc_lookUpClass
+    0x10b4182c4 &amp;lt;+116&amp;gt;: movq   -0x18(%rbp), %rsi
+    0x10b4182c8 &amp;lt;+120&amp;gt;: xorl   %edx, %edx
+    0x10b4182ca &amp;lt;+122&amp;gt;: movq   %rax, %rdi
+    0x10b4182cd &amp;lt;+125&amp;gt;: callq  0x10b462888               ; symbol stub for: objc_duplicateClass
+    0x10b4182d2 &amp;lt;+130&amp;gt;: movq   %rax, %r14
+    0x10b4182d5 &amp;lt;+133&amp;gt;: movq   -0x18(%rbp), %rdi
+    0x10b4182d9 &amp;lt;+137&amp;gt;: callq  0x10b462690               ; symbol stub for: free
+    0x10b4182de &amp;lt;+142&amp;gt;: movq   %rbx, %rdi
+    0x10b4182e1 &amp;lt;+145&amp;gt;: callq  0x10b462882               ; symbol stub for: objc_destructInstance
+    0x10b4182e6 &amp;lt;+150&amp;gt;: movq   %rbx, %rdi
+    0x10b4182e9 &amp;lt;+153&amp;gt;: movq   %r14, %rsi
+    0x10b4182ec &amp;lt;+156&amp;gt;: callq  0x10b46294e               ; symbol stub for: object_setClass
+    0x10b4182f1 &amp;lt;+161&amp;gt;: leaq   0x25a121(%rip), %rax      ; __CFDeallocateZombies
+    0x10b4182f8 &amp;lt;+168&amp;gt;: cmpb   $0x0, (%rax)
+    0x10b4182fb &amp;lt;+171&amp;gt;: je     0x10b418305               ; &amp;lt;+181&amp;gt;
+    0x10b4182fd &amp;lt;+173&amp;gt;: movq   %rbx, %rdi
+    0x10b418300 &amp;lt;+176&amp;gt;: callq  0x10b462690               ; symbol stub for: free
+    0x10b418305 &amp;lt;+181&amp;gt;: addq   $0x10, %rsp
+    0x10b418309 &amp;lt;+185&amp;gt;: popq   %rbx
+    0x10b41830a &amp;lt;+186&amp;gt;: popq   %r14
+    0x10b41830c &amp;lt;+188&amp;gt;: popq   %rbp
+    0x10b41830d &amp;lt;+189&amp;gt;: retq   
+    0x10b41830e &amp;lt;+190&amp;gt;: movq   %rbx, %rdi
+    0x10b418311 &amp;lt;+193&amp;gt;: addq   $0x10, %rsp
+    0x10b418315 &amp;lt;+197&amp;gt;: popq   %rbx
+    0x10b418316 &amp;lt;+198&amp;gt;: popq   %r14
+    0x10b418318 &amp;lt;+200&amp;gt;: popq   %rbp
+    0x10b418319 &amp;lt;+201&amp;gt;: jmp    0x10b46237e               ; symbol stub for: _objc_rootDealloc
+    0x10b41831e &amp;lt;+206&amp;gt;: nop    
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+&lt;p&gt;Zombie 检查的实现一览无余了。
+上面汇编大致的翻译成伪码后：&lt;/p&gt;
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;if(__CFZombieEnabled){
+    class selfClass = object_getClass(self);
+    char *className = class_getName(selfClass);//获取类名
+    char *classNameWithZombie;
+    asprintf(&amp;amp;classNameWithZombie,&quot;_NSZombie_%s&quot;,className);//加_NSZombie_前缀
+    class zombieClass = objc_lookUpClass(classNameWithZombie);//返回一个classNameWithZombie类名的class
+    if(zombieClass == nil){
+        //返回一个“_NSZombie_”类名的class,这个类比较特殊，里面没有任何的方法，
+        //所以给这个类发任何消息都会触发消息转发，最后因找不到方法而崩溃。
+        class defaultZombieClass = objc_lookUpClass(&quot;_NSZombie_&quot;);
+        //根据defaultZombieClass复制一个类名为classNameWithZombie的class
+        zombieClass = objc_duplicateClass(defaultZombieClass,classNameWithZombie,0);
+    }
+    free(classNameWithZombie);//释放字符串内存
+    objc_destructInstance(self);//销毁self，后面会看到该方法的实现。
+    object_setClass(self,zombieClass);//设置当前类的内容是zombieClass，即一个没有任何方法的类
+    if(__CFDeallocateZombies){
+        free(self);//设置NSDeallocateZombies环境变量时真正释放Zombie对象的内存
+    }
+}
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+&lt;p&gt;objc_destructInstance源码如下：&lt;/p&gt;
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;void *objc_destructInstance(id obj) 
+{
+    if (obj) {
+        // Read all of the flags at once for performance.
+        bool cxx = obj-&amp;gt;hasCxxDtor();
+        bool assoc = obj-&amp;gt;hasAssociatedObjects();
+
+        // This order is important.
+        if (cxx) object_cxxDestruct(obj);
+        if (assoc) _object_remove_assocations(obj);
+        obj-&amp;gt;clearDeallocating();
+    }
+
+    return obj;
+}
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+&lt;p&gt;一个正常的对象dealloc方法实际是调用object_dispose：&lt;/p&gt;
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;id 
+object_dispose(id obj)
+{
+    if (!obj) return nil;
+
+    objc_destructInstance(obj);    
+    free(obj);
+
+    return nil;
+}
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+&lt;p&gt;看到上面的源码就清晰了，objc_destructInstance并没有释放class的内存，释放内存放生在object_dispose，这里并没有调用。&lt;/p&gt;
+
+&lt;h3 id=&quot;section-1&quot;&gt;小结&lt;/h3&gt;
+&lt;p&gt;Apple的Zombie 检查功能实际是Swizzle NSObject的dealloc方法，创建一个不包哈任何方法的class将原来的class内存内容替换掉，这样当已经调用dealloc的对象再被发送任何消息（调用函数）时都会出发OC的消息转发机制,只需在添加消息转发过程中的函数，并在函数里处理输出log即可。由于__CFZombieEnabled是私有变量，自己的工程中并不能修改__CFZombieEnabled变量的值，即使自己Swizzle dealloc 到 __dealloc_zombie ，因为__CFZombieEnabled的判断过不去也不能正常的使用。&lt;/p&gt;
+
+&lt;h3 id=&quot;section-2&quot;&gt;自己实现&lt;/h3&gt;
+&lt;p&gt;因为已经看到完整的汇编自己实现并不难。
+自己的dj_zombie_dealloc方法：&lt;/p&gt;
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;- (void)dj_zombie_dealloc
+{
+    BOOL zombieClassHasResigted = YES;
+    NSString *className = NSStringFromClass(self.class);
+    NSString *zombieClassName = [kDJZombieLong stringByAppendingString:className];
+    const char *zombieClassNameUtf8 = zombieClassName.UTF8String;
+    
+    Class zombieClass = objc_lookUpClass(zombieClassNameUtf8);
+    if (!zombieClass) {
+        zombieClassHasResigted = NO;
+        Class tmpClass = objc_lookUpClass(kDJZombieShort);
+        DumpObjcMethods(tmpClass);
+        zombieClass = objc_duplicateClass(tmpClass,zombieClassNameUtf8,0);
+        DumpObjcMethods(zombieClass);
+    }
+    
+    objc_destructInstance((id)self);
+    object_setClass((id)self,zombieClass);
+    
+    if (zombieClassHasResigted == NO) {
+        SEL originalSignatureSelector = @selector(methodSignatureForSelector:);
+        SEL swizzledSignatureSelector = @selector(dj_methodSignatureForSelector:);
+        //_NSZombie_ has no method ,just add it.
+        Method swizzledSignatureMethod = class_getInstanceMethod(NSObject.class, swizzledSignatureSelector);
+        class_addMethod(zombieClass, originalSignatureSelector, method_getImplementation(swizzledSignatureMethod), method_getTypeEncoding(swizzledSignatureMethod));
+        
+        SEL originalInvocationSelector = @selector(forwardInvocation:);
+        SEL swizzledInvocationSelector = @selector(dj_forwardInvocation:);
+        Method swizzledInvocationMethod = class_getInstanceMethod(NSObject.class, swizzledInvocationSelector);
+        class_addMethod(zombieClass, originalInvocationSelector, method_getImplementation(swizzledInvocationMethod), method_getTypeEncoding(swizzledInvocationMethod));
+        
+        DumpObjcMethods(zombieClass);
+    }
+}
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+&lt;p&gt;DJZombieCheck为了获取到给Zombie对象发消息时的参数，使用了消息转发机制的methodSignatureForSelector:和forwardInvocation:,所以给空的class添加了两个方法来接收ZombieObject的消息，其中处理完后自己抛出包含详细信息的异常:&lt;/p&gt;
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;void dj_throwExceptionForSelector(id selfInstance,SEL selector,NSArray *paramList)
+{
+    Class selfClass = object_getClass(selfInstance);
+    NSString *zombieClassName = [NSString stringWithUTF8String:class_getName(selfClass)];
+    NSString *originalClassName = [zombieClassName stringByReplacingOccurrencesOfString:kDJZombieLong withString:@&quot;&quot;];
+    
+    id paramLog = paramList ? paramList : @&quot;empty&quot;;//empty string is also param,so use &quot;empty&quot; to replace
+    NSString *zombieLog = [NSString stringWithFormat:@&quot;Find zombie,class:%@ address:%p selector:%@ param:%@\r\n&quot;,originalClassName,selfInstance,NSStringFromSelector(selector),paramLog];
+    NSLog(@&quot;%@&quot;, zombieLog);
+    
+    if ([DJZombieCheckHanlder sharedInstance].zombieHandler) {
+        [DJZombieCheckHanlder sharedInstance].zombieHandler(originalClassName, selector, paramList);
+    }
+    
+    NSException *zombieException = [NSException exceptionWithName:@&quot;DJZombieException&quot; reason:zombieLog userInfo:nil];
+    [zombieException raise];
+}
+
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+&lt;p&gt;修改全局变量DJZombieCheckEnable的值来关闭DJZombieCheck:&lt;/p&gt;
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;BOOL DJZombieCheckEnable = NO;
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+&lt;p&gt;如果需要上传Zombie信息到服务端：&lt;/p&gt;
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;- (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions
+{
+    //read last crash log and send it to server.
+    
+    [[DJZombieCheckHanlder sharedInstance] setZombieHandler:^(NSString *className, SEL selector, NSArray *paramList){
+        //save crash log
+    }];
+    return YES;
+}
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+&lt;h3 id=&quot;section-3&quot;&gt;注意：&lt;/h3&gt;
+&lt;ul&gt;
+  &lt;li&gt;由于Zombie检查一直在申请内存，长时间使用后会有内存压力问题，注意OOM，这个Xcode自带的也有同样问题。&lt;/li&gt;
+  &lt;li&gt;如果Xcode自带的和DJZombieCheck同时打开，DJZombieCheck会自动关闭。&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;完整的实现以及使用方法见：&lt;a href=&quot;https://github.com/Dokay/DJZombieCheck&quot;&gt;DJZombieCheck&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;原创文章，转载请注明出处。&lt;/p&gt;</content><summary type="html">不想看原理的可以直接去使用，传送门：DJZombieCheck</summary></entry></feed>

@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html>
+
+  <head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+
+  <title>UITableView 各个reload性能分析</title>
+  <meta name="description" content="苹果原生的UITableView 当数据源改变时有三个reload方法，分别是reloadData、reloadSections:withRowAnimation:、reloadRowsAtIndexPaths:withRowAnimation，本文主要是分析三个方法在Reload非动画时(animation参数...">
+  <meta name="author" content="leopardpan">
+
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="UITableView 各个reload性能分析">
+  <meta name="twitter:description" content="苹果原生的UITableView 当数据源改变时有三个reload方法，分别是reloadData、reloadSections:withRowAnimation:、reloadRowsAtIndexPaths:withRowAnimation，本文主要是分析三个方法在Reload非动画时(animation参数...">
+  
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="UITableView 各个reload性能分析">
+  <meta property="og:description" content="苹果原生的UITableView 当数据源改变时有三个reload方法，分别是reloadData、reloadSections:withRowAnimation:、reloadRowsAtIndexPaths:withRowAnimation，本文主要是分析三个方法在Reload非动画时(animation参数...">
+  
+  <link rel="icon" type="image/png" href="/images/favicon.png" />
+  <link href="/images/favicon.png" rel="shortcut icon" type="image/png">
+  
+  <link rel="stylesheet" href="/css/main.css">
+  <link href="//netdna.bootstrapcdn.com/font-awesome/4.1.0/css/font-awesome.min.css" rel="stylesheet">
+
+  <link rel="canonical" href="http://localhost:4000/2017/11/ReloadData/">
+  <link rel="alternate" type="application/rss+xml" title="豆中旭" href="http://localhost:4000/feed.xml">
+  
+  <meta name="google-site-verification" content="1-1ZlHoRvM0T2FqPbW2S-qLgYXN6rsn52kErlMPd_gw" />
+
+<!-- 百度统计 -->
+  
+
+<!-- google 统计 -->
+  
+
+</head>
+
+
+  <body>
+
+    <span class="mobile btn-mobile-menu">        
+      <div class="nav_container">
+         <nav class="nav-menu-item" style = "float:right">
+            <i class="nav-menu-item">
+              <a href="/#blog" title="" class="blog-button">  博客主页
+              </a>
+            </i>
+            
+                <i class="nav-menu-item">
+
+                  <a href="/archive" title="archive" class="btn-mobile-menu__icon">
+                      所有文章
+                  </a>
+                </i>
+            
+                <i class="nav-menu-item">
+
+                  <a href="/tags" title="tags" class="btn-mobile-menu__icon">
+                      标签
+                  </a>
+                </i>
+            
+                <i class="nav-menu-item">
+
+                  <a href="/about" title="about" class="btn-mobile-menu__icon">
+                      关于我
+                  </a>
+                </i>
+            
+          </nav>
+      </div>
+    </span>
+    
+    <header class="panel-cover panel-cover--collapsed" style="background-image: url('/images/background-cover.jpg')">
+  <div class="panel-main">
+
+    <div class="panel-main__inner panel-inverted">
+    <div class="panel-main__content">
+        <!-- 头像效果-start -->
+        <div class="ih-item circle effect right_to_left">            
+            <a href="/#blog" title="前往 豆中旭 的主页" class="blog-button">
+                <div class="img"><img src="/images/avatar.jpg" alt="img"></div>
+                <div class="info">
+                    <div class="info-back">
+                        <h2> 
+                            
+                                Dokay
+                            
+                        </h2>
+                        <p>
+                           
+                                iOS Developer
+                            
+                        </p>
+                    </div>
+                </div>
+            </a>
+        </div>
+        <!-- 头像效果-end -->
+        <h1 class="panel-cover__title panel-title"><a href="/#blog" title="link to homepage for 豆中旭" class="blog-button">豆中旭</a></h1>
+        
+        <span class="panel-cover__subtitle panel-subtitle">个人博客</span>
+        
+        <hr class="panel-cover__divider" />
+        <p class="panel-cover__description">学习与总结~</p>
+        <hr class="panel-cover__divider panel-cover__divider--secondary" />
+        
+        
+        
+
+        <div class="navigation-wrapper">
+          <div>
+            <nav class="cover-navigation cover-navigation--primary">
+              <ul class="navigation">
+                <li class="navigation__item"><a href="/#blog" title="" class="blog-button">博客主页</a></li>
+                
+                  <li class="navigation__item"><a href="/archive" title="archive">所有文章</a></li>
+                
+                  <li class="navigation__item"><a href="/tags" title="tags">标签</a></li>
+                
+                  <li class="navigation__item"><a href="/about" title="about">关于我</a></li>
+                
+              </ul>
+            </nav>
+          </div>          
+        </div>
+
+
+        </div>
+      </div>
+    </div>
+    
+    
+    <div class="panel-cover--overlay cover-clear"></div>
+    
+  </div>
+</header>
+
+
+    <div class="content-wrapper">
+        <div class="content-wrapper__inner">
+            <article class="post-container post-container--single" itemscope itemtype="http://schema.org/BlogPosting">
+  <header class="post-header">
+    <h1 class="post-title">UITableView 各个reload性能分析</h1>
+    <div class="post-meta">
+      <time datetime="2017-11-02 22:03:03 +0800" itemprop="datePublished" class="post-meta__date date">2017-11-02</time>
+     
+      <script async src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+      <span id="busuanzi_container_page_pv">　　阅读：<span id="busuanzi_value_page_pv"></span>次</span>
+    </p>
+    </div>
+  </header>
+
+  <section class="post">
+    <p>苹果原生的UITableView 当数据源改变时有三个reload方法，分别是reloadData、reloadSections:withRowAnimation:、reloadRowsAtIndexPaths:withRowAnimation，本文主要是分析三个方法在Reload非动画时(animation参数使用UITableViewRowAnimationNone)的性能比较，主要是比较主线程的时间。凭感觉这三个方法的性能最好是ReloadRow，最差是ReloadData,下面实际比较一下是不是这样。Demo传送门：<a href="https://github.com/Dokay/DJTestDemo/tree/master/DJTestTableViewReloadData">DJTestTableViewReloadData</a></p>
+
+<h3 id="section">比较的方法</h3>
+<p>reloadSections:withRowAnimation:和reloadRowsAtIndexPaths:withRowAnimation是两个同步方法，reloadData是一个异步刷新方法。直接在方法调用前后埋点采集时间是不准确的，所以需要结束时间的采集在TableView的View刷新之后，而View的刷新在Runloop的beforeWarting回调里面，所以调用reloadData方法后的下个Runloop开始时TableView已经刷新完毕。dispatch_after是避免其他事件对检测的干扰。</p>
+<div class="highlighter-rouge"><pre class="highlight"><code>- (void)onTouchTest{
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        __block NSTimeInterval begin, end;
+        begin = CACurrentMediaTime();
+        printf("start....\n");
+        dispatch_async(dispatch_get_main_queue(), ^{
+            printf("reload....\n");
+//            [self.tableView reloadData];
+            NSIndexPath *indexPath = [NSIndexPath indexPathForRow:3 inSection:0];
+            [self.tableView reloadSections:[NSIndexSet indexSetWithIndex:0] withRowAnimation:UITableViewRowAnimationNone];
+//            [self.tableView reloadRowsAtIndexPaths:@[indexPath] withRowAnimation:UITableViewRowAnimationNone];
+            dispatch_async(dispatch_get_main_queue(),^{
+                printf("end....\n");
+                end = CACurrentMediaTime();
+                printf(" %8.2f ms\n",((end - begin) * 1000));
+            });
+        });
+    });
+    
+}
+</code></pre>
+</div>
+
+<h3 id="section-1">结果数据比较</h3>
+<p>使用测试机型分别是iPhone4S,系统版本iOS8.1.1，iPhone7，系统版本iOS11.1。由于第一次调用函数和从第二次开始后数据差异比较大，分开比较。先比较第二次开始后的稳定数据。</p>
+
+<p>以下图表是稳定状态下的iPhone4S数据：
+<img src="/images/posts/reloaddata/Reload_4S_2.png" alt="" /></p>
+
+<p>iPhone7数据：
+<img src="/images/posts/reloaddata/Reload_7_2.png" alt="" /></p>
+
+<p>结论：
+在iPhone 4S机器上当Cell数量小于1000时，ReloadData的性能是优于ReloadRow,当Cell数量大于1000时ReloadData的性能开始优于ReloadRow。ReloadSection的性能始终最差。
+在iPhone 7机器上ReloadData的性能始终是优于ReloadRow,ReloadSection的性能始终最差。</p>
+
+<p>下面比较第一次函数调用的数据：
+第一次函数调用ReloadRow和ReloadSection都有一个特点就是相较于ReloadData，ReloadRow会多调用一次Cell的初始化方法，ReloadSection会多调用一屏数量的Cell的初始化方法。至于为什么会多调用一次初始化方法根据苹果的文档猜测，新初始化的Cell用来做动画了,下面是苹果关于reloadSections:withRowAnimation:的说明：
+<img src="/images/posts/reloaddata/ReloadRow_apple.jpg" alt="" /></p>
+
+<p>此处包含Nib文件的Cell比较简单，只包含一个UIImageView和一个UILabel。具体可见文末的测试Demo。
+以下图表是第一次与第二次开始后稳定的iPhone4S数据：
+<img src="/images/posts/reloaddata/Reload_4S_1.png" alt="" /></p>
+
+<p>iPhone7数据：
+<img src="/images/posts/reloaddata/Reload_7_1.png" alt="" /></p>
+
+<p>结论：
+由于要多初始化一个含Nib的Cell，ReloadRow的性能劣于ReloadData在iPone4S和iPhone7上表现是一致的。</p>
+
+<h3 id="section-2">总结</h3>
+<p>1.只有当Cell的数量比较少（少于1000）时，并且Cell的初始化比较简单时，在iPhone4S iOS8.1.1上ReloadRow性能最优;其他Cell稍复杂或者Cell的数量比较多时ReloadData性能最优。ReloadSection始终是效率最差的。
+2.猜测慢的原因是即使UI
+3.由于我们平时使用的Cell的复杂度一般高于一个简单的Nib文件Cell初始化的时间，建议在平时的使用中优先使用ReloadData,其次ReloadRow,最后使用ReloadSection。</p>
+
+<p>原创文章，转载请注明出处。</p>
+
+
+
+  </section>
+</article>
+
+<section>
+       <ul class="pager">
+        
+        <li class="previous">
+            <a href="/2017/08/ZombieObjectCheck/" data-toggle="tooltip" data-placement="top" title="Release 模式下的Zombie检查工具">上一篇：  <span>Release 模式下的Zombie检查工具</span>
+            </a>
+        </li>
+        
+        
+    </ul>
+</section>
+
+
+<div id="disqus_thread"></div>
+<script>
+
+/**
+*  RECOMMENDED CONFIGURATION VARIABLES: EDIT AND UNCOMMENT THE SECTION BELOW TO INSERT DYNAMIC VALUES FROM YOUR PLATFORM OR CMS.
+*  LEARN WHY DEFINING THESE VARIABLES IS IMPORTANT: https://disqus.com/admin/universalcode/#configuration-variables*/
+/*
+var disqus_config = function () {
+this.page.url = PAGE_URL;  // Replace PAGE_URL with your page's canonical URL variable
+this.page.identifier = PAGE_IDENTIFIER; // Replace PAGE_IDENTIFIER with your page's unique identifier variable
+};
+*/
+(function() { // DON'T EDIT BELOW THIS LINE
+var d = document, s = d.createElement('script');
+s.src = 'https://dokay-blog.disqus.com/embed.js';
+s.setAttribute('data-timestamp', +new Date());
+(d.head || d.body).appendChild(s);
+})();
+</script>
+<noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+                            
+                            
+
+                            
+
+            <section class="footer">
+    <footer>
+        <div class = "footer_div">  
+        <nav class="cover-navigation navigation--social">
+          <ul class="navigation">
+
+          
+          <!-- Github -->
+          <li class="navigation__item_social">
+            <a href="https://github.com/Dokay" title="@Dokay 的 Github" target="_blank">
+              <i class='social fa fa-github fa-2x'></i>
+              <span class="label">Github</span>
+            </a>
+          </li>
+          
+
+          
+          <!-- Email -->
+          <li class="navigation__item_social">
+            <a href="mailto:dokay.dou@gmail.com" title="Contact me">
+              <i class='social fa fa-envelope fa-2x'></i>
+              <span class="label">Email</span>
+            </a>
+          </li>
+          
+
+          </ul>
+        </nav>
+
+        </div>
+
+        <div class = "footer_div">  
+           <p class="copyright text-muted">
+            Copyright &copy; 豆中旭 2017 Theme by <a href="http://baixin.io/">leopardpan</a> |
+            <iframe
+                style="margin-left: 2px; margin-bottom:-5px;"
+                frameborder="0" scrolling="0" width="91px" height="20px"
+                src="https://ghbtns.com/github-btn.html?user=leopardpan&repo=leopardpan.github.io&type=star&count=true" >
+            </iframe>
+            </p>
+        	<div align="right">
+    			<link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.3.0/css/font-awesome.min.css">
+				            <span id="busuanzi_container_site_pv">本站总访问量<span id="busuanzi_value_site_pv"></span>次</span>
+          	</div>
+        <div>
+    </footer>
+</section>
+
+        </div>
+    </div>
+    
+    <script type="text/javascript" src="//code.jquery.com/jquery-1.11.3.min.js"></script>
+<script type="text/javascript" src="/js/main.js"></script>
+
+
+
+    
+  </body>
+
+</html>

@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html>
+
+  <head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+
+  <title>Release 模式下的Zombie检查工具</title>
+  <meta name="description" content="不想看原理的可以直接去使用，传送门：DJZombieCheck">
+  <meta name="author" content="leopardpan">
+
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Release 模式下的Zombie检查工具">
+  <meta name="twitter:description" content="不想看原理的可以直接去使用，传送门：DJZombieCheck">
+  
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Release 模式下的Zombie检查工具">
+  <meta property="og:description" content="不想看原理的可以直接去使用，传送门：DJZombieCheck">
+  
+  <link rel="icon" type="image/png" href="/images/favicon.png" />
+  <link href="/images/favicon.png" rel="shortcut icon" type="image/png">
+  
+  <link rel="stylesheet" href="/css/main.css">
+  <link href="//netdna.bootstrapcdn.com/font-awesome/4.1.0/css/font-awesome.min.css" rel="stylesheet">
+
+  <link rel="canonical" href="http://localhost:4000/2017/08/ZombieObjectCheck/">
+  <link rel="alternate" type="application/rss+xml" title="豆中旭" href="http://localhost:4000/feed.xml">
+  
+  <meta name="google-site-verification" content="1-1ZlHoRvM0T2FqPbW2S-qLgYXN6rsn52kErlMPd_gw" />
+
+<!-- 百度统计 -->
+  
+
+<!-- google 统计 -->
+  
+
+</head>
+
+
+  <body>
+
+    <span class="mobile btn-mobile-menu">        
+      <div class="nav_container">
+         <nav class="nav-menu-item" style = "float:right">
+            <i class="nav-menu-item">
+              <a href="/#blog" title="" class="blog-button">  博客主页
+              </a>
+            </i>
+            
+                <i class="nav-menu-item">
+
+                  <a href="/archive" title="archive" class="btn-mobile-menu__icon">
+                      所有文章
+                  </a>
+                </i>
+            
+                <i class="nav-menu-item">
+
+                  <a href="/tags" title="tags" class="btn-mobile-menu__icon">
+                      标签
+                  </a>
+                </i>
+            
+                <i class="nav-menu-item">
+
+                  <a href="/about" title="about" class="btn-mobile-menu__icon">
+                      关于我
+                  </a>
+                </i>
+            
+          </nav>
+      </div>
+    </span>
+    
+    <header class="panel-cover panel-cover--collapsed" style="background-image: url('/images/background-cover.jpg')">
+  <div class="panel-main">
+
+    <div class="panel-main__inner panel-inverted">
+    <div class="panel-main__content">
+        <!-- 头像效果-start -->
+        <div class="ih-item circle effect right_to_left">            
+            <a href="/#blog" title="前往 豆中旭 的主页" class="blog-button">
+                <div class="img"><img src="/images/avatar.jpg" alt="img"></div>
+                <div class="info">
+                    <div class="info-back">
+                        <h2> 
+                            
+                                Dokay
+                            
+                        </h2>
+                        <p>
+                           
+                                iOS Developer
+                            
+                        </p>
+                    </div>
+                </div>
+            </a>
+        </div>
+        <!-- 头像效果-end -->
+        <h1 class="panel-cover__title panel-title"><a href="/#blog" title="link to homepage for 豆中旭" class="blog-button">豆中旭</a></h1>
+        
+        <span class="panel-cover__subtitle panel-subtitle">个人博客</span>
+        
+        <hr class="panel-cover__divider" />
+        <p class="panel-cover__description">学习与总结~</p>
+        <hr class="panel-cover__divider panel-cover__divider--secondary" />
+        
+        
+        
+
+        <div class="navigation-wrapper">
+          <div>
+            <nav class="cover-navigation cover-navigation--primary">
+              <ul class="navigation">
+                <li class="navigation__item"><a href="/#blog" title="" class="blog-button">博客主页</a></li>
+                
+                  <li class="navigation__item"><a href="/archive" title="archive">所有文章</a></li>
+                
+                  <li class="navigation__item"><a href="/tags" title="tags">标签</a></li>
+                
+                  <li class="navigation__item"><a href="/about" title="about">关于我</a></li>
+                
+              </ul>
+            </nav>
+          </div>          
+        </div>
+
+
+        </div>
+      </div>
+    </div>
+    
+    
+    <div class="panel-cover--overlay cover-clear"></div>
+    
+  </div>
+</header>
+
+
+    <div class="content-wrapper">
+        <div class="content-wrapper__inner">
+            <article class="post-container post-container--single" itemscope itemtype="http://schema.org/BlogPosting">
+  <header class="post-header">
+    <h1 class="post-title">Release 模式下的Zombie检查工具</h1>
+    <div class="post-meta">
+      <time datetime="2017-08-30 21:03:03 +0800" itemprop="datePublished" class="post-meta__date date">2017-08-30</time>
+     
+      <script async src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+      <span id="busuanzi_container_page_pv">　　阅读：<span id="busuanzi_value_page_pv"></span>次</span>
+    </p>
+    </div>
+  </header>
+
+  <section class="post">
+    <p>不想看原理的可以直接去使用，传送门：<a href="https://github.com/Dokay/DJZombieCheck">DJZombieCheck</a></p>
+
+<p>一般我们对Zombie对象检查使用Xcode自带的功能：</p>
+
+<p><img src="/images/posts/zombie_object_check/xcode_zombie_object.png" alt="" /></p>
+
+<p>但是该功能有个缺陷，即只能在Debug模式下使用，大部分Zombie是偶然发生的，并没有必现的路径。如果QA手中的版本（Release模式打包）中有类似的Zombie检查功能将会大大提高我们找到Zombie对象的效率。</p>
+
+<h3 id="section">尝试使用系统自带的</h3>
+<p>在源码(这里使用<a href="https://opensource.apple.com/tarballs/objc4/objc4-706.tar.gz">objc4-706</a>)中搜索zombie，很容易搜索到下面代码：</p>
+<div class="highlighter-rouge"><pre class="highlight"><code>void environ_init(void) 
+{
+ 	...
+	
+    for (char **p = *_NSGetEnviron(); *p != nil; p++) {
+        if (0 == strncmp(*p, "Malloc", 6)  ||  0 == strncmp(*p, "DYLD", 4)  ||  
+            0 == strncmp(*p, "NSZombiesEnabled", 16))
+        {
+            maybeMallocDebugging = true;
+        }
+	}
+	
+	...
+	
+	if (maybeMallocDebugging) {
+	        const char *insert = getenv("DYLD_INSERT_LIBRARIES");
+	        const char *zombie = getenv("NSZombiesEnabled");
+	        const char *pooldebug = getenv("OBJC_DEBUG_POOL_ALLOCATION");
+	        if ((getenv("MallocStackLogging")
+	             || getenv("MallocStackLoggingNoCompact")
+	             || (zombie &amp;&amp; (*zombie == 'Y' || *zombie == 'y'))
+	             || (insert &amp;&amp; strstr(insert, "libgmalloc")))
+	            &amp;&amp;
+	            (!pooldebug || 0 == strcmp(pooldebug, "YES")))
+	        {
+	            DebugPoolAllocation = true;
+	        }
+	    }
+}
+
+</code></pre>
+</div>
+<p>从源码中很明显的看出在Xcode中设置ZombieObject其实就是设置了环境变量NSZombiesEnabled的值为Y或y,并且OBJC_DEBUG_POOL_ALLOCATION环境变量为YES。自己可以打开Zombie通过代码验证一下：</p>
+<div class="highlighter-rouge"><pre class="highlight"><code>    const char *zombie = getenv("NSZombiesEnabled");
+    char *pool = getenv("OBJC_DEBUG_POOL_ALLOCATION");
+</code></pre>
+</div>
+<p>两个变量的输出都是NULL，难道猜错了。再验证一下：</p>
+<div class="highlighter-rouge"><pre class="highlight"><code>    for (char **p = *_NSGetEnviron(); *p != nil; p++) {
+        printf("\n env:%s",*p);
+    }
+</code></pre>
+</div>
+<p>输出：</p>
+<div class="highlighter-rouge"><pre class="highlight"><code> ...
+ env:NSZombieEnabled=YES
+ env:CLASSIC=0
+ env:SIMULATOR_RUNTIME_BUILD_VERSION=14E8301
+ ...
+</code></pre>
+</div>
+<p>明显是设置了NSZombieEnabled环境变量为YES，与源码有出入，但是思路是对的。
+设置Zombie Object前后环境变量的改变只有一处，见下图红色部分：
+<img src="/images/posts/zombie_object_check/env_compare.png" alt="" />
+能否直接代码设置环境变量NSZombieEnabled为YES达到目的呢：</p>
+<div class="highlighter-rouge"><pre class="highlight"><code>+ (void)load
+{
+    setenv("NSZombieEnabled", "YES", 1);
+    
+    const char *zombie = getenv("NSZombieEnabled");
+    printf("\n env:%s",zombie);
+}
+</code></pre>
+</div>
+<p>输出：</p>
+<div class="highlighter-rouge"><pre class="highlight"><code>env:YES
+</code></pre>
+</div>
+<p>尽管环境变量已经设置YES，并不起作用，猜测环境变量起作用的时机在+load()方法调用之前。
+回过头看看源码，发现设置环境变量后控制的是DebugPoolAllocation变量，尝试将其置为true也不行。
+既然这里通过环境变量开控制开关，Apple总归要有实现的地方，查看CF的源码(这里使用的是<a href="https://opensource.apple.com/tarballs/CF/CF-855.17.tar.gz">CF-855.17</a>)
+在CFRuntime.c文件中看到两个函数__CFZombifyNSObject,_CFEnableZombies：</p>
+<div class="highlighter-rouge"><pre class="highlight"><code>#if defined(DEBUG) || defined(ENABLE_ZOMBIES)
+
+CF_PRIVATE uint8_t __CFZombieEnabled = 0;
+CF_PRIVATE uint8_t __CFDeallocateZombies = 0;
+
+extern void __CFZombifyNSObject(void);  // from NSObject.m
+
+void _CFEnableZombies(void) {
+}
+</code></pre>
+</div>
+<p>Xcode打卡Zombie Object分别添加符号断点，__CFZombifyNSObject汇编大致如下：</p>
+<div class="highlighter-rouge"><pre class="highlight"><code>CoreFoundation`__CFZombifyNSObject:
+-&gt;  0x10b417e10 &lt;+0&gt;:  pushq  %rbp
+    0x10b417e11 &lt;+1&gt;:  movq   %rsp, %rbp
+    0x10b417e14 &lt;+4&gt;:  pushq  %r15
+    0x10b417e16 &lt;+6&gt;:  pushq  %r14
+    0x10b417e18 &lt;+8&gt;:  pushq  %rbx
+    0x10b417e19 &lt;+9&gt;:  pushq  %rax
+    0x10b417e1a &lt;+10&gt;: leaq   0x1f3470(%rip), %rdi      ; "NSObject"
+    0x10b417e21 &lt;+17&gt;: callq  0x10b4628ca               ; symbol stub for: objc_lookUpClass
+    0x10b417e26 &lt;+22&gt;: movq   %rax, %rbx
+    0x10b417e29 &lt;+25&gt;: movq   0x246f88(%rip), %rsi      ; "dealloc"
+    0x10b417e30 &lt;+32&gt;: movq   0x2481c9(%rip), %r14      ; "__dealloc_zombie"
+    0x10b417e37 &lt;+39&gt;: movq   %rbx, %rdi
+    0x10b417e3a &lt;+42&gt;: callq  0x10b4624d4               ; symbol stub for: class_getInstanceMethod
+    0x10b417e3f &lt;+47&gt;: movq   %rax, %r15
+    0x10b417e42 &lt;+50&gt;: movq   %rbx, %rdi
+    0x10b417e45 &lt;+53&gt;: movq   %r14, %rsi
+    0x10b417e48 &lt;+56&gt;: callq  0x10b4624d4               ; symbol stub for: class_getInstanceMethod
+    0x10b417e4d &lt;+61&gt;: movq   %r15, %rdi
+    0x10b417e50 &lt;+64&gt;: movq   %rax, %rsi
+    0x10b417e53 &lt;+67&gt;: addq   $0x8, %rsp
+    0x10b417e57 &lt;+71&gt;: popq   %rbx
+    0x10b417e58 &lt;+72&gt;: popq   %r14
+    0x10b417e5a &lt;+74&gt;: popq   %r15
+    0x10b417e5c &lt;+76&gt;: popq   %rbp
+    0x10b417e5d &lt;+77&gt;: jmp    0x10b462810               ; symbol stub for: method_exchangeImplementations
+    0x10b417e62 &lt;+82&gt;: nopw   %cs:(%rax,%rax)
+
+</code></pre>
+</div>
+<p>看到这个，经常做Swizzle的同学已经看出来了，Apple直接Swizzle了NSObject的dealloc方法，最后实际的实现函数是 __dealloc_zombie，
+对__dealloc_zombie添加符号断点：</p>
+<div class="highlighter-rouge"><pre class="highlight"><code>CoreFoundation`-[NSObject(NSObject) __dealloc_zombie]:
+-&gt;  0x10b418250 &lt;+0&gt;:   pushq  %rbp
+    0x10b418251 &lt;+1&gt;:   movq   %rsp, %rbp
+    0x10b418254 &lt;+4&gt;:   pushq  %r14
+    0x10b418256 &lt;+6&gt;:   pushq  %rbx
+    0x10b418257 &lt;+7&gt;:   subq   $0x10, %rsp
+    0x10b41825b &lt;+11&gt;:  movq   %rdi, %rbx
+    0x10b41825e &lt;+14&gt;:  testq  %rbx, %rbx
+    0x10b418261 &lt;+17&gt;:  js     0x10b418305               ; &lt;+181&gt;
+    0x10b418267 &lt;+23&gt;:  leaq   0x25a1aa(%rip), %rax      ; __CFZombieEnabled
+    0x10b41826e &lt;+30&gt;:  cmpb   $0x0, (%rax)
+    0x10b418271 &lt;+33&gt;:  je     0x10b41830e               ; &lt;+190&gt;
+    0x10b418277 &lt;+39&gt;:  movq   %rbx, %rdi
+    0x10b41827a &lt;+42&gt;:  callq  0x10b462936               ; symbol stub for: object_getClass
+    0x10b41827f &lt;+47&gt;:  movq   $0x0, -0x18(%rbp)
+    0x10b418287 &lt;+55&gt;:  movq   %rax, %rdi
+    0x10b41828a &lt;+58&gt;:  callq  0x10b4624e0               ; symbol stub for: class_getName
+    0x10b41828f &lt;+63&gt;:  movq   %rax, %rcx
+    0x10b418292 &lt;+66&gt;:  leaq   0x1e9285(%rip), %rsi      ; "_NSZombie_%s"
+    0x10b418299 &lt;+73&gt;:  leaq   -0x18(%rbp), %rdi
+    0x10b41829d &lt;+77&gt;:  xorl   %eax, %eax
+    0x10b41829f &lt;+79&gt;:  movq   %rcx, %rdx
+    0x10b4182a2 &lt;+82&gt;:  callq  0x10b462402               ; symbol stub for: asprintf
+    0x10b4182a7 &lt;+87&gt;:  movq   -0x18(%rbp), %rdi
+    0x10b4182ab &lt;+91&gt;:  callq  0x10b4628ca               ; symbol stub for: objc_lookUpClass
+    0x10b4182b0 &lt;+96&gt;:  movq   %rax, %r14
+    0x10b4182b3 &lt;+99&gt;:  testq  %r14, %r14
+    0x10b4182b6 &lt;+102&gt;: jne    0x10b4182d5               ; &lt;+133&gt;
+    0x10b4182b8 &lt;+104&gt;: leaq   0x1e8c7d(%rip), %rdi      ; "_NSZombie_"
+    0x10b4182bf &lt;+111&gt;: callq  0x10b4628ca               ; symbol stub for: objc_lookUpClass
+    0x10b4182c4 &lt;+116&gt;: movq   -0x18(%rbp), %rsi
+    0x10b4182c8 &lt;+120&gt;: xorl   %edx, %edx
+    0x10b4182ca &lt;+122&gt;: movq   %rax, %rdi
+    0x10b4182cd &lt;+125&gt;: callq  0x10b462888               ; symbol stub for: objc_duplicateClass
+    0x10b4182d2 &lt;+130&gt;: movq   %rax, %r14
+    0x10b4182d5 &lt;+133&gt;: movq   -0x18(%rbp), %rdi
+    0x10b4182d9 &lt;+137&gt;: callq  0x10b462690               ; symbol stub for: free
+    0x10b4182de &lt;+142&gt;: movq   %rbx, %rdi
+    0x10b4182e1 &lt;+145&gt;: callq  0x10b462882               ; symbol stub for: objc_destructInstance
+    0x10b4182e6 &lt;+150&gt;: movq   %rbx, %rdi
+    0x10b4182e9 &lt;+153&gt;: movq   %r14, %rsi
+    0x10b4182ec &lt;+156&gt;: callq  0x10b46294e               ; symbol stub for: object_setClass
+    0x10b4182f1 &lt;+161&gt;: leaq   0x25a121(%rip), %rax      ; __CFDeallocateZombies
+    0x10b4182f8 &lt;+168&gt;: cmpb   $0x0, (%rax)
+    0x10b4182fb &lt;+171&gt;: je     0x10b418305               ; &lt;+181&gt;
+    0x10b4182fd &lt;+173&gt;: movq   %rbx, %rdi
+    0x10b418300 &lt;+176&gt;: callq  0x10b462690               ; symbol stub for: free
+    0x10b418305 &lt;+181&gt;: addq   $0x10, %rsp
+    0x10b418309 &lt;+185&gt;: popq   %rbx
+    0x10b41830a &lt;+186&gt;: popq   %r14
+    0x10b41830c &lt;+188&gt;: popq   %rbp
+    0x10b41830d &lt;+189&gt;: retq   
+    0x10b41830e &lt;+190&gt;: movq   %rbx, %rdi
+    0x10b418311 &lt;+193&gt;: addq   $0x10, %rsp
+    0x10b418315 &lt;+197&gt;: popq   %rbx
+    0x10b418316 &lt;+198&gt;: popq   %r14
+    0x10b418318 &lt;+200&gt;: popq   %rbp
+    0x10b418319 &lt;+201&gt;: jmp    0x10b46237e               ; symbol stub for: _objc_rootDealloc
+    0x10b41831e &lt;+206&gt;: nop    
+</code></pre>
+</div>
+<p>Zombie 检查的实现一览无余了。
+上面汇编大致的翻译成伪码后：</p>
+<div class="highlighter-rouge"><pre class="highlight"><code>if(__CFZombieEnabled){
+    class selfClass = object_getClass(self);
+    char *className = class_getName(selfClass);//获取类名
+    char *classNameWithZombie;
+    asprintf(&amp;classNameWithZombie,"_NSZombie_%s",className);//加_NSZombie_前缀
+    class zombieClass = objc_lookUpClass(classNameWithZombie);//返回一个classNameWithZombie类名的class
+    if(zombieClass == nil){
+        //返回一个“_NSZombie_”类名的class,这个类比较特殊，里面没有任何的方法，
+        //所以给这个类发任何消息都会触发消息转发，最后因找不到方法而崩溃。
+        class defaultZombieClass = objc_lookUpClass("_NSZombie_");
+        //根据defaultZombieClass复制一个类名为classNameWithZombie的class
+        zombieClass = objc_duplicateClass(defaultZombieClass,classNameWithZombie,0);
+    }
+    free(classNameWithZombie);//释放字符串内存
+    objc_destructInstance(self);//销毁self，后面会看到该方法的实现。
+    object_setClass(self,zombieClass);//设置当前类的内容是zombieClass，即一个没有任何方法的类
+    if(__CFDeallocateZombies){
+        free(self);//设置NSDeallocateZombies环境变量时真正释放Zombie对象的内存
+    }
+}
+</code></pre>
+</div>
+<p>objc_destructInstance源码如下：</p>
+<div class="highlighter-rouge"><pre class="highlight"><code>void *objc_destructInstance(id obj) 
+{
+    if (obj) {
+        // Read all of the flags at once for performance.
+        bool cxx = obj-&gt;hasCxxDtor();
+        bool assoc = obj-&gt;hasAssociatedObjects();
+
+        // This order is important.
+        if (cxx) object_cxxDestruct(obj);
+        if (assoc) _object_remove_assocations(obj);
+        obj-&gt;clearDeallocating();
+    }
+
+    return obj;
+}
+</code></pre>
+</div>
+<p>一个正常的对象dealloc方法实际是调用object_dispose：</p>
+<div class="highlighter-rouge"><pre class="highlight"><code>id 
+object_dispose(id obj)
+{
+    if (!obj) return nil;
+
+    objc_destructInstance(obj);    
+    free(obj);
+
+    return nil;
+}
+</code></pre>
+</div>
+<p>看到上面的源码就清晰了，objc_destructInstance并没有释放class的内存，释放内存放生在object_dispose，这里并没有调用。</p>
+
+<h3 id="section-1">小结</h3>
+<p>Apple的Zombie 检查功能实际是Swizzle NSObject的dealloc方法，创建一个不包哈任何方法的class将原来的class内存内容替换掉，这样当已经调用dealloc的对象再被发送任何消息（调用函数）时都会出发OC的消息转发机制,只需在添加消息转发过程中的函数，并在函数里处理输出log即可。由于__CFZombieEnabled是私有变量，自己的工程中并不能修改__CFZombieEnabled变量的值，即使自己Swizzle dealloc 到 __dealloc_zombie ，因为__CFZombieEnabled的判断过不去也不能正常的使用。</p>
+
+<h3 id="section-2">自己实现</h3>
+<p>因为已经看到完整的汇编自己实现并不难。
+自己的dj_zombie_dealloc方法：</p>
+<div class="highlighter-rouge"><pre class="highlight"><code>- (void)dj_zombie_dealloc
+{
+    BOOL zombieClassHasResigted = YES;
+    NSString *className = NSStringFromClass(self.class);
+    NSString *zombieClassName = [kDJZombieLong stringByAppendingString:className];
+    const char *zombieClassNameUtf8 = zombieClassName.UTF8String;
+    
+    Class zombieClass = objc_lookUpClass(zombieClassNameUtf8);
+    if (!zombieClass) {
+        zombieClassHasResigted = NO;
+        Class tmpClass = objc_lookUpClass(kDJZombieShort);
+        DumpObjcMethods(tmpClass);
+        zombieClass = objc_duplicateClass(tmpClass,zombieClassNameUtf8,0);
+        DumpObjcMethods(zombieClass);
+    }
+    
+    objc_destructInstance((id)self);
+    object_setClass((id)self,zombieClass);
+    
+    if (zombieClassHasResigted == NO) {
+        SEL originalSignatureSelector = @selector(methodSignatureForSelector:);
+        SEL swizzledSignatureSelector = @selector(dj_methodSignatureForSelector:);
+        //_NSZombie_ has no method ,just add it.
+        Method swizzledSignatureMethod = class_getInstanceMethod(NSObject.class, swizzledSignatureSelector);
+        class_addMethod(zombieClass, originalSignatureSelector, method_getImplementation(swizzledSignatureMethod), method_getTypeEncoding(swizzledSignatureMethod));
+        
+        SEL originalInvocationSelector = @selector(forwardInvocation:);
+        SEL swizzledInvocationSelector = @selector(dj_forwardInvocation:);
+        Method swizzledInvocationMethod = class_getInstanceMethod(NSObject.class, swizzledInvocationSelector);
+        class_addMethod(zombieClass, originalInvocationSelector, method_getImplementation(swizzledInvocationMethod), method_getTypeEncoding(swizzledInvocationMethod));
+        
+        DumpObjcMethods(zombieClass);
+    }
+}
+</code></pre>
+</div>
+<p>DJZombieCheck为了获取到给Zombie对象发消息时的参数，使用了消息转发机制的methodSignatureForSelector:和forwardInvocation:,所以给空的class添加了两个方法来接收ZombieObject的消息，其中处理完后自己抛出包含详细信息的异常:</p>
+<div class="highlighter-rouge"><pre class="highlight"><code>void dj_throwExceptionForSelector(id selfInstance,SEL selector,NSArray *paramList)
+{
+    Class selfClass = object_getClass(selfInstance);
+    NSString *zombieClassName = [NSString stringWithUTF8String:class_getName(selfClass)];
+    NSString *originalClassName = [zombieClassName stringByReplacingOccurrencesOfString:kDJZombieLong withString:@""];
+    
+    id paramLog = paramList ? paramList : @"empty";//empty string is also param,so use "empty" to replace
+    NSString *zombieLog = [NSString stringWithFormat:@"Find zombie,class:%@ address:%p selector:%@ param:%@\r\n",originalClassName,selfInstance,NSStringFromSelector(selector),paramLog];
+    NSLog(@"%@", zombieLog);
+    
+    if ([DJZombieCheckHanlder sharedInstance].zombieHandler) {
+        [DJZombieCheckHanlder sharedInstance].zombieHandler(originalClassName, selector, paramList);
+    }
+    
+    NSException *zombieException = [NSException exceptionWithName:@"DJZombieException" reason:zombieLog userInfo:nil];
+    [zombieException raise];
+}
+
+</code></pre>
+</div>
+<p>修改全局变量DJZombieCheckEnable的值来关闭DJZombieCheck:</p>
+<div class="highlighter-rouge"><pre class="highlight"><code>BOOL DJZombieCheckEnable = NO;
+</code></pre>
+</div>
+<p>如果需要上传Zombie信息到服务端：</p>
+<div class="highlighter-rouge"><pre class="highlight"><code>- (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions
+{
+    //read last crash log and send it to server.
+    
+    [[DJZombieCheckHanlder sharedInstance] setZombieHandler:^(NSString *className, SEL selector, NSArray *paramList){
+        //save crash log
+    }];
+    return YES;
+}
+</code></pre>
+</div>
+<h3 id="section-3">注意：</h3>
+<ul>
+  <li>由于Zombie检查一直在申请内存，长时间使用后会有内存压力问题，注意OOM，这个Xcode自带的也有同样问题。</li>
+  <li>如果Xcode自带的和DJZombieCheck同时打开，DJZombieCheck会自动关闭。</li>
+</ul>
+
+<p>完整的实现以及使用方法见：<a href="https://github.com/Dokay/DJZombieCheck">DJZombieCheck</a></p>
+
+<p>原创文章，转载请注明出处。</p>
+
+
+
+  </section>
+</article>
+
+<section>
+       <ul class="pager">
+        
+        
+        <li class="next">
+            <a href="/2017/11/ReloadData/" data-toggle="tooltip" data-placement="top" title="UITableView 各个reload性能分析">下一篇：  <span>UITableView 各个reload性能分析</span>
+            </a>
+        </li>
+        
+    </ul>
+</section>
+
+
+<div id="disqus_thread"></div>
+<script>
+
+/**
+*  RECOMMENDED CONFIGURATION VARIABLES: EDIT AND UNCOMMENT THE SECTION BELOW TO INSERT DYNAMIC VALUES FROM YOUR PLATFORM OR CMS.
+*  LEARN WHY DEFINING THESE VARIABLES IS IMPORTANT: https://disqus.com/admin/universalcode/#configuration-variables*/
+/*
+var disqus_config = function () {
+this.page.url = PAGE_URL;  // Replace PAGE_URL with your page's canonical URL variable
+this.page.identifier = PAGE_IDENTIFIER; // Replace PAGE_IDENTIFIER with your page's unique identifier variable
+};
+*/
+(function() { // DON'T EDIT BELOW THIS LINE
+var d = document, s = d.createElement('script');
+s.src = 'https://dokay-blog.disqus.com/embed.js';
+s.setAttribute('data-timestamp', +new Date());
+(d.head || d.body).appendChild(s);
+})();
+</script>
+<noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+                            
+                            
+
+                            
+
+            <section class="footer">
+    <footer>
+        <div class = "footer_div">  
+        <nav class="cover-navigation navigation--social">
+          <ul class="navigation">
+
+          
+          <!-- Github -->
+          <li class="navigation__item_social">
+            <a href="https://github.com/Dokay" title="@Dokay 的 Github" target="_blank">
+              <i class='social fa fa-github fa-2x'></i>
+              <span class="label">Github</span>
+            </a>
+          </li>
+          
+
+          
+          <!-- Email -->
+          <li class="navigation__item_social">
+            <a href="mailto:dokay.dou@gmail.com" title="Contact me">
+              <i class='social fa fa-envelope fa-2x'></i>
+              <span class="label">Email</span>
+            </a>
+          </li>
+          
+
+          </ul>
+        </nav>
+
+        </div>
+
+        <div class = "footer_div">  
+           <p class="copyright text-muted">
+            Copyright &copy; 豆中旭 2017 Theme by <a href="http://baixin.io/">leopardpan</a> |
+            <iframe
+                style="margin-left: 2px; margin-bottom:-5px;"
+                frameborder="0" scrolling="0" width="91px" height="20px"
+                src="https://ghbtns.com/github-btn.html?user=leopardpan&repo=leopardpan.github.io&type=star&count=true" >
+            </iframe>
+            </p>
+        	<div align="right">
+    			<link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.3.0/css/font-awesome.min.css">
+				            <span id="busuanzi_container_site_pv">本站总访问量<span id="busuanzi_value_site_pv"></span>次</span>
+          	</div>
+        <div>
+    </footer>
+</section>
+
+        </div>
+    </div>
+    
+    <script type="text/javascript" src="//code.jquery.com/jquery-1.11.3.min.js"></script>
+<script type="text/javascript" src="/js/main.js"></script>
+
+
+
+    
+  </body>
+
+</html>
