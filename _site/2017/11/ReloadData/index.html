@@ -214,6 +214,7 @@
   <li>只有当Cell的数量比较少（少于1000）时，并且Cell的初始化比较简单时，在iPhone4S iOS8.1.1上ReloadRow性能最优;其他Cell稍复杂或者Cell的数量比较多时ReloadData性能最优。ReloadSection始终是效率最差的。</li>
   <li>猜测ReloadRow慢的原因是即使使用了UITableViewRowAnimationNone，苹果仍然做了动画，只是这个动画的时间为0，由于要做动画，对整个TableView的调整复要高于直接刷新整个TableView。</li>
   <li>由于我们平时使用的Cell的复杂度一般高于一个简单的Nib文件Cell初始化的时间，建议在平时的使用中优先使用ReloadData,其次ReloadRow,最后使用ReloadSection。</li>
+  <li>如果只是Cell中部分内容更新的话，使用cellForRowAtIndexPath:获取cell,**直接调用Cell的实例方法更新View显示是最高效的方法。</li>
 </ul>
 
 <h4 id="cell-1">2.当Cell有动画要求时：</h4>
